@@ -12,7 +12,8 @@ blueprint:
           device_class: power
     starting_threshold:
       name: Starting power threshold
-      description: "Power threshold above which we assume the appliance has started. (suggestion: 5)"
+      description: "Power threshold above which we assume the appliance has started."
+      default: 5
       selector:
         number:
           min: 1
@@ -20,7 +21,8 @@ blueprint:
           unit_of_measurement: W
     starting_hysteresis:
       name: Starting hysteresis
-      description: "Time duration the power measurement has to stay above the starting power threshold. (suggestion: 5)"
+      description: "Time duration the power measurement has to stay above the starting power threshold."
+      default: 5
       selector:
         number:
           min: 1
@@ -28,7 +30,8 @@ blueprint:
           unit_of_measurement: min
     finishing_threshold:
       name: Finishing power threshold
-      description: "Power threshold below which we assume the appliance has finished. (suggestion: 5)"
+      description: "Power threshold below which we assume the appliance has finished."
+      default: 5
       selector:
         number:
           min: 1
@@ -36,7 +39,8 @@ blueprint:
           unit_of_measurement: W
     finishing_hysteresis:
       name: Finishing hysteresis
-      description: "Time duration the power measurement has to stay below the finishing power threshold. (suggestion: 5)"
+      description: "Time duration the power measurement has to stay below the finishing power threshold."
+      default: 5
       selector:
         number:
           min: 1
