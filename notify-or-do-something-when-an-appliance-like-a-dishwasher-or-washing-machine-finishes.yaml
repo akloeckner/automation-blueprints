@@ -32,7 +32,7 @@ blueprint:
           max: 60.0
           unit_of_measurement: min
           mode: slider
-          step: 1.0
+          step: 0.25
     finishing_threshold:
       name: Finishing power threshold
       description: Power threshold below which we assume the appliance has finished.
@@ -55,7 +55,7 @@ blueprint:
           max: 60.0
           unit_of_measurement: min
           mode: slider
-          step: 1.0
+          step: 0.25
     actions:
       name: Actions
       description: Actions (e.g. pushing a notification, TTS announcement, ...)
