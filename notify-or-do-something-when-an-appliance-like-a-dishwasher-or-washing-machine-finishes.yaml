@@ -28,7 +28,7 @@ blueprint:
       default: 5
       selector:
         number:
-          min: 1.0
+          min: 0.25
           max: 60.0
           unit_of_measurement: min
           mode: slider
@@ -51,7 +51,7 @@ blueprint:
       default: 5
       selector:
         number:
-          min: 1.0
+          min: 0.25
           max: 60.0
           unit_of_measurement: min
           mode: slider
