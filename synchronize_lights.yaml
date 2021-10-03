@@ -1,0 +1,58 @@
+blueprint:
+  name: Synchronize lights and switches
+  description: |
+    When a light is turned on (or off), another light gets turned on (or off) as well.
+    A template can be customized for more complex cases.
+  domain: automation
+  input:
+    trigger_entity:
+      name: Trigger entity
+      description: The entity to copy the state from
+      selector:
+        entity:
+    on_template:
+      name: Trigger template for ON
+      description: The template which has to render as true in the on state
+      default: "{{ is_state(trigger_entity, 'on') }}"
+    on_for:
+      name: Duration in ON state
+      description: The duration for which the trigger template has to be true
+      default: '00:00:00'
+      selector:
+        time: {}
+    off_template:
+      name: Trigger template for OFF
+      description: The template which has to render as true in the off state
+      default: "{{ is_state(trigger_entity, 'off') }}"
+    off_for:
+      name: Duration in OFF state
+      description: The duration for which the trigger template has to be true
+      default: '00:00:05'
+      selector:
+        time: {}
+    target_entity:
+      name: Target entity
+      description: The entity to copy the state to
+      selector:
+        entity:
+
+mode: parallel
+
+trigger_variables:
+  trigger_entity: !input 'trigger_entity'
+
+trigger:
+- platform: template
+  id: 'on'
+  value_template: !input 'on_template'
+  for: !input 'on_for'
+- platform: template
+  id: 'off'
+  value_template: !input 'off_template'
+  for: !input 'off_for'
+
+action:
+- alias: "Copy the state"
+  service: "homeassistant.turn_{{ trigger.id }}"
+  data_template:
+    entity_id: !input target_entity
