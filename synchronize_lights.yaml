@@ -3,6 +3,7 @@ blueprint:
   description: |
     When a light is turned on (or off), another light gets turned on (or off) as well.
     A template can be customized for more complex cases.
+  source_url: https://gist.github.com/akloeckner/4cb290afedb47066514017211c357924
   domain: automation
   input:
     trigger_entity:
