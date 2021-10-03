@@ -5,6 +5,7 @@ blueprint:
     a) raise its brightness in steps up to maximum brightness in a given time frame, or
     b) set it to its minimum brightness.
     Turning the light to its maximum brightness or off will stop the actions.
+  source_url: https://gist.github.com/akloeckner/6f5d3299b5661ef1830171db1957b1a0
   domain: automation
   input:
     light_entity:
