@@ -87,7 +87,7 @@ blueprint:
       default: []
       selector:
         action: {}
-  source_url: https://gist.github.com/seamus65/939a147634942dd885c8704334627f93
+  source_url: https://gist.github.com/seamus65/5d83a8d3f890db9fc9033123b9c8d19e
 mode: restart
 max_exceeded: silent
 trigger:
