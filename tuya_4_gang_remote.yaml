@@ -1,0 +1,163 @@
+blueprint:
+  name: ZHA - Tuya 4 Gang Portable Remote
+  description: 'Control anything with a Tuya 4 Gang Portable Remote.
+
+    You can set functions for a single press, double press and long press of each of the four buttons. This allows you to assign, 
+    e.g., a scene or anything else.'
+
+  domain: automation
+  input:
+    remote:
+      name: Remote
+      description: Tuya 4 Gang Portable Remote to use
+      selector:
+        device:
+          integration: zha
+          manufacturer: _TZ3000_ee8nrt2l
+          model: TS0044
+    single_press_1:
+      name: Single press button 1
+      description: Action to run on single press of button 1
+      default: []
+      selector:
+        action: {}
+    single_press_2:
+      name: Single press button 2
+      description: Action to run on single press of button 2
+      default: []
+      selector:
+        action: {}
+    single_press_3:
+      name: Single press button 3
+      description: Action to run on single press of button 3
+      default: []
+      selector:
+        action: {}
+    single_press_4:
+      name: Single press button 4
+      description: Action to run on single press of button 4
+      default: []
+      selector:
+        action: {}
+    double_press_1:
+      name: Double press button 1
+      description: Action to run on double press of button 1
+      default: []
+      selector:
+        action: {}
+    double_press_2:
+      name: Double press button 2
+      description: Action to run on double press of button 2
+      default: []
+      selector:
+        action: {}
+    double_press_3:
+      name: Double press button 3
+      description: Action to run on double press of button 3
+      default: []
+      selector:
+        action: {}
+    double_press_4:
+      name: Double press button 4
+      description: Action to run on double press of button 4
+      default: []
+      selector:
+        action: {}
+    long_press_1:
+      name: Long press button 1
+      description: Action to run on long press of button 1
+      default: []
+      selector:
+        action: {}
+    long_press_2:
+      name: Long press button 2
+      description: Action to run on long press of button 2
+      default: []
+      selector:
+        action: {}
+    long_press_3:
+      name: Long press button 3
+      description: Action to run on long press of button 3
+      default: []
+      selector:
+        action: {}
+    long_press_4:
+      name: Long press button 4
+      description: Action to run on long press of button 4
+      default: []
+      selector:
+        action: {}
+  source_url: https://gist.github.com/seamus65/939a147634942dd885c8704334627f93
+mode: restart
+max_exceeded: silent
+trigger:
+- platform: event
+  event_type: zha_event
+  event_data:
+    device_id: !input 'remote'
+action:
+- variables:
+    command: '{{ trigger.event.data.command }}'
+    cluster_id: '{{ trigger.event.data.cluster_id }}'
+    endpoint_id: '{{ trigger.event.data.endpoint_id }}'
+- choose:
+  - conditions:
+    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 1 }}'
+    sequence: !input 'single_press_1'
+  - conditions:
+    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 2 }}'
+    sequence: !input 'single_press_2'
+  - conditions:
+    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 3 }}'
+    sequence: !input 'single_press_3'
+  - conditions:
+    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 4 }}'
+    sequence: !input 'single_press_4'
+  - conditions:
+    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 1 }}'
+    sequence: !input 'double_press_1'
+  - conditions:
+    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 2 }}'
+    sequence: !input 'double_press_2'
+  - conditions:
+    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 3 }}'
+    sequence: !input 'double_press_3'
+  - conditions:
+    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 4 }}'
+    sequence: !input 'double_press_4'
+  - conditions:
+    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 1 }}'
+    sequence: !input 'long_press_1'
+  - conditions:
+    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 2 }}'
+    sequence: !input 'long_press_2'
+  - conditions:
+    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 3 }}'
+    sequence: !input 'long_press_3'
+  - conditions:
+    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ cluster_id == 6 }}'
+    - '{{ endpoint_id == 4 }}'
+    sequence: !input 'long_press_4'
