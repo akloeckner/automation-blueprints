@@ -2,7 +2,7 @@ blueprint:
   name: Appliance has finished
   description: Do something when an appliance (like a washing machine or dishwasher)
     has finished as detected by a power sensor.
-  source_url: https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512
+  source_url: https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512/revisions
   domain: automation
   input:
     power_sensor:
@@ -19,7 +19,7 @@ blueprint:
       selector:
         number:
           min: 1.0
-          max: 100.0
+          max: 500.0
           unit_of_measurement: W
           mode: slider
           step: 1.0
@@ -30,7 +30,7 @@ blueprint:
       default:
         minutes: 5
       selector:
-        duration:
+        duration: {}
     finishing_threshold:
       name: Finishing power threshold
       description: Power threshold below which we assume the appliance has finished.
@@ -38,7 +38,7 @@ blueprint:
       selector:
         number:
           min: 1.0
-          max: 100.0
+          max: 500.0
           unit_of_measurement: W
           mode: slider
           step: 1.0
@@ -49,10 +49,11 @@ blueprint:
       default:
         minutes: 10
       selector:
-        duration:
+        duration: {}
     off_threshold:
       name: Off power threshold
-      description: 'Power threshold below which we assume the appliance been switched off and actions are interrupted. (=0: disable feature)'
+      description: 'Power threshold below which we assume the appliance been switched
+        off and actions are interrupted. (=0: disable feature)'
       default: 0.0
       selector:
         number:
@@ -72,7 +73,6 @@ blueprint:
       default: []
       selector:
         action: {}
-
 trigger:
 - platform: numeric_state
   entity_id: !input power_sensor
@@ -82,22 +82,21 @@ condition: []
 action:
 - choose: []
   default: !input pre_actions
-- wait_for_trigger:
-  - platform: numeric_state
-    entity_id: !input power_sensor
-    below: !input finishing_threshold
-    for: !input finishing_hysteresis
 - parallel:
-  - sequence:
-    - choose: []
-      default: !input actions
-    - stop: "Stopping '{{ this.attributes.friendly_name }}' because script finished."
   - sequence:
     - wait_for_trigger:
       - platform: numeric_state
         entity_id: !input power_sensor
         below: !input off_threshold
-    - stop: "Stopping '{{ this.attributes.friendly_name }}' because device turned off."
-
+    - stop: Stopping '{{ this.attributes.friendly_name }}' because device turned off.
+  - sequence:
+    - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input power_sensor
+        below: !input finishing_threshold
+        for: !input finishing_hysteresis
+    - choose: []
+      default: !input actions
+    - stop: Stopping '{{ this.attributes.friendly_name }}' because script finished.
 mode: single
 max_exceeded: silent
