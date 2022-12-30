@@ -2,7 +2,7 @@ blueprint:
   name: Appliance has finished
   description: Do something when an appliance (like a washing machine or dishwasher)
     has finished as detected by a power sensor.
-  source_url: https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512/revisions
+  source_url: https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512
   domain: automation
   input:
     power_sensor:
