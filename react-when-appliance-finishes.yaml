@@ -62,6 +62,14 @@ blueprint:
           unit_of_measurement: W
           mode: slider
           step: 0.1
+    off_hysteresis:
+      name: Off hysteresis
+      description: Time duration the power measurement has to stay below the off
+        power threshold.
+      default:
+        minutes: 0
+      selector:
+        duration: {}
     actions:
       name: Actions
       description: Actions (e.g. pushing a notification, TTS announcement, ...)
@@ -78,18 +86,32 @@ trigger:
   entity_id: !input power_sensor
   for: !input starting_hysteresis
   above: !input starting_threshold
-condition: []
+  id: start
+- platform: event
+  event_type: stop_appliance_has_finished
+  id: stop
+condition:
+- >-
+  {{ trigger.id == 'start' or trigger.event.data.entity_id == this.entity_id }}
 action:
-- choose: []
-  default: !input pre_actions
+- if:
+  - '{{ trigger.id == ''stop'' }}'
+  then:
+  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop'.
 - parallel:
   - sequence:
     - wait_for_trigger:
       - platform: numeric_state
         entity_id: !input power_sensor
         below: !input off_threshold
+        for: !input off_hysteresis
+    - event: stop_appliance_has_finished
+      event_data:
+        entity_id: '{{ this.entity_id }}'
     - stop: Stopping '{{ this.attributes.friendly_name }}' because device turned off.
   - sequence:
+    - choose: []
+      default: !input pre_actions
     - wait_for_trigger:
       - platform: numeric_state
         entity_id: !input power_sensor
@@ -97,6 +119,9 @@ action:
         for: !input finishing_hysteresis
     - choose: []
       default: !input actions
-    - stop: Stopping '{{ this.attributes.friendly_name }}' because script finished.
-mode: single
-max_exceeded: silent
+    - event: stop_appliance_has_finished
+      event_data:
+        entity_id: '{{ this.entity_id }}'
+    - stop: Stopping '{{ this.attributes.friendly_name }}' because actions finished.
+mode: restart
+max_exceeded: info
