@@ -1,0 +1,127 @@
+blueprint:
+  name: Appliance has finished
+  description: Do something when an appliance (like a washing machine or dishwasher)
+    has finished as detected by a power sensor.
+  source_url: https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512
+  domain: automation
+  input:
+    power_sensor:
+      name: Power Sensor
+      description: Power sensor entity (e.g. from a smart plug device).
+      selector:
+        entity:
+          domain: sensor
+          multiple: false
+    starting_threshold:
+      name: Starting power threshold
+      description: Power threshold above which we assume the appliance has started.
+      default: 100
+      selector:
+        number:
+          min: 1.0
+          max: 500.0
+          unit_of_measurement: W
+          mode: slider
+          step: 1.0
+    starting_hysteresis:
+      name: Starting hysteresis
+      description: Time duration the power measurement has to stay above the starting
+        power threshold.
+      default:
+        minutes: 5
+      selector:
+        duration: {}
+    finishing_threshold:
+      name: Finishing power threshold
+      description: Power threshold below which we assume the appliance has finished.
+      default: 50
+      selector:
+        number:
+          min: 1.0
+          max: 500.0
+          unit_of_measurement: W
+          mode: slider
+          step: 1.0
+    finishing_hysteresis:
+      name: Finishing hysteresis
+      description: Time duration the power measurement has to stay below the finishing
+        power threshold.
+      default:
+        minutes: 10
+      selector:
+        duration: {}
+    off_threshold:
+      name: Off power threshold
+      description: 'Power threshold below which we assume the appliance been switched
+        off and actions are interrupted. (=0: disable feature)'
+      default: 0.0
+      selector:
+        number:
+          min: 0.0
+          max: 10.0
+          unit_of_measurement: W
+          mode: slider
+          step: 0.1
+    off_hysteresis:
+      name: Off hysteresis
+      description: Time duration the power measurement has to stay below the off
+        power threshold.
+      default:
+        minutes: 0
+      selector:
+        duration: {}
+    actions:
+      name: Actions
+      description: Actions (e.g. pushing a notification, TTS announcement, ...)
+      selector:
+        action: {}
+    pre_actions:
+      name: Actions
+      description: Actions when starting threshhold is crossed
+      default: []
+      selector:
+        action: {}
+trigger:
+- platform: numeric_state
+  entity_id: !input power_sensor
+  for: !input starting_hysteresis
+  above: !input starting_threshold
+  id: start
+- platform: event
+  event_type: stop_appliance_has_finished
+  id: stop
+condition:
+- >-
+  {{ trigger.id == 'start' or trigger.event.data.entity_id == this.entity_id }}
+action:
+- if:
+  - '{{ trigger.id == ''stop'' }}'
+  then:
+  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop'.
+- parallel:
+  - sequence:
+    - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input power_sensor
+        below: !input off_threshold
+        for: !input off_hysteresis
+    - event: stop_appliance_has_finished
+      event_data:
+        entity_id: '{{ this.entity_id }}'
+    - stop: Stopping '{{ this.attributes.friendly_name }}' because device turned off.
+  - sequence:
+    - choose: []
+      default: !input pre_actions
+    - wait_for_trigger:
+      - platform: numeric_state
+        entity_id: !input power_sensor
+        below: !input finishing_threshold
+        for: !input finishing_hysteresis
+    - choose: []
+      default: !input actions
+    - event: stop_appliance_has_finished
+      event_data:
+        entity_id: '{{ this.entity_id }}'
+    - stop: Stopping '{{ this.attributes.friendly_name }}' because actions finished.
+mode: restart
+max_exceeded: info
