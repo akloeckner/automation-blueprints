@@ -89,10 +89,9 @@ trigger:
   id: start
 - platform: event
   event_type: stop_appliance_has_finished
+  event_data:
+    entity_id: '{{ this.entity_id }}'
   id: stop
-condition:
-- >-
-  {{ trigger.id == 'start' or trigger.event.data.entity_id == this.entity_id }}
 action:
 - if:
   - '{{ trigger.id == ''stop'' }}'
