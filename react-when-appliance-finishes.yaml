@@ -52,7 +52,7 @@ blueprint:
         duration: {}
     off_threshold:
       name: Off power threshold
-      description: 'Power threshold below which we assume the appliance has been switched
+      description: 'Power threshold below which we assume the appliance been switched
         off and actions are interrupted. (=0: disable feature)'
       default: 0.0
       selector:
@@ -77,7 +77,7 @@ blueprint:
         action: {}
     pre_actions:
       name: Actions
-      description: Actions when starting threshold is crossed
+      description: Actions when starting threshhold is crossed
       default: []
       selector:
         action: {}
@@ -89,10 +89,9 @@ trigger:
   id: start
 - platform: event
   event_type: stop_appliance_has_finished
+  event_data:
+    entity_id: '{{ this.entity_id }}'
   id: stop
-condition:
-- >-
-  {{ trigger.id == 'start' or trigger.event.data.entity_id == this.entity_id }}
 action:
 - if:
   - '{{ trigger.id == ''stop'' }}'
