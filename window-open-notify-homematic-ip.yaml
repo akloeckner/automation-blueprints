@@ -6,7 +6,7 @@ blueprint:
     It uses the Homematic window sensor channel to set the temperature to the "Open-window
     temperature" set in the device configuration. You should set the "Mode for temperature
     fall detection" to Inactive to avoid conflicts. It waits until the window is closed
-    again in order to restore the climate entity temperature. It has an optional blocking
+    again in order to restore the climate entity temperature after 5 seconds. It has an optional blocking
     entity to prevent the automation running unnecessarily, for example during the
     Summer season.
   domain: automation
@@ -46,8 +46,7 @@ blueprint:
         entity:
           domain: climate
           multiple: false
-  #source_url: https://gist.github.com/smoki3/9e38e03d6ae180326ab1c80282ec6d78
-  #based on: https://gist.github.com/sotatech/500b53ee64ca5ad5299c22cde47407ed
+  source_url: https://gist.github.com/smoki3/9e38e03d6ae180326ab1c80282ec6d78
 variables:
   blocking_entity: !input blocking_entity
   climate_target: !input climate_entity
@@ -75,6 +74,7 @@ action:
       - platform: state
         entity_id: !input window_entity
         to: "off"
+        for: 5
     continue_on_timeout: false
   - service: homematicip_local.set_device_value
     data:
