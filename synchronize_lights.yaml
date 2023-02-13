@@ -3,14 +3,30 @@ blueprint:
   description: |
     When a light is turned on (or off), another light gets turned on (or off) as well.
     A template can be customized for more complex cases.
+    Use async_time to allow desynchronizing trigger and target entities.
   source_url: https://gist.github.com/akloeckner/4cb290afedb47066514017211c357924
   domain: automation
   input:
     trigger_entity:
       name: Trigger entity
-      description: The entity to copy the state from
+      description: The entity to copy the state from (must be a single entity id, if default template is used)
       selector:
         entity:
+    target_entity:
+      name: Target entity
+      description: The entity to copy the state to (must be a single entity id, if async_time is used)
+      selector:
+        entity: {}
+    async_time:
+      name: Async time
+      description: De-synchronize target entity, if switched this fast (use 0 to disable feature)
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          mode: slider
     on_template:
       name: Trigger template for ON
       description: The template which has to render as true in the on state
@@ -28,14 +44,9 @@ blueprint:
     off_for:
       name: Duration in OFF state
       description: The duration for which the trigger template has to be true
-      default: '00:00:05'
+      default: '00:00:00'
       selector:
         time: {}
-    target_entity:
-      name: Target entity
-      description: The entity to copy the state to
-      selector:
-        entity:
 
 mode: parallel
 
@@ -52,8 +63,20 @@ trigger:
   value_template: !input 'off_template'
   for: !input 'off_for'
 
+variables:
+  target_entity: !input target_entity
+  async_time: !input async_time
+  target_state: >
+    {% if async_time > 0 and
+          async_time >= (now() - as_datetime(this.last_updated)).total_seconds() and
+          async_time >= (now() - states[target_entity].last_changed).total_seconds() %}
+      {{ 'on' if trigger.id == 'off' else 'off' }}
+    {% else %}
+      {{ trigger.id }}
+    {% endif %}
+
 action:
-- alias: "Copy the state"
-  service: "homeassistant.turn_{{ trigger.id }}"
+- alias: Set the target state
+  service: "homeassistant.turn_{{ target_state }}"
   data_template:
-    entity_id: !input target_entity
+    entity_id: "{{ target_entity }}"
