@@ -16,7 +16,8 @@ blueprint:
       name: Target entity
       description: The entity to copy the state to (must be a single entity id, if async_time is used)
       selector:
-        entity: {}
+        entity:
+          multiple: true
     async_time:
       name: Async time
       description: De-synchronize target entity, if switched this fast (use 0 to disable feature)
