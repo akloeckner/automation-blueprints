@@ -13,8 +13,6 @@ blueprint:
       selector:
         device:
           integration: zha
-          manufacturer: _TZ3000_ee8nrt2l
-          model: TS0044
     single_press_1:
       name: Single press button 1
       description: Action to run on single press of button 1
@@ -87,7 +85,7 @@ blueprint:
       default: []
       selector:
         action: {}
-  source_url: https://gist.github.com/seamus65/5d83a8d3f890db9fc9033123b9c8d19e
+  source_url: https://gist.github.com/akloeckner/6d0fd98dd59e250b2a9f29b4801eb960
 mode: restart
 max_exceeded: silent
 trigger:
