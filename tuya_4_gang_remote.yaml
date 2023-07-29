@@ -96,66 +96,81 @@ trigger:
 action:
 - variables:
     command: '{{ trigger.event.data.command }}'
+    short_press: >
+      {{
+         command == 'remote_button_short_press' or
+         command == 'press_type' and trigger.event.data.params.press_type == 0
+      }}
+    double_press: >
+      {{
+         command == 'remote_button_double_press' or
+         command == 'press_type' and trigger.event.data.params.press_type == 1
+      }}
+    long_press: >
+      {{
+         command == 'remote_button_long_press' or
+         command == 'press_type' and trigger.event.data.params.press_type == 2
+      }}
     cluster_id: '{{ trigger.event.data.cluster_id }}'
     endpoint_id: '{{ trigger.event.data.endpoint_id }}'
 - choose:
   - conditions:
-    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ short_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 1 }}'
     sequence: !input 'single_press_1'
   - conditions:
-    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ short_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 2 }}'
     sequence: !input 'single_press_2'
   - conditions:
-    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ short_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 3 }}'
     sequence: !input 'single_press_3'
   - conditions:
-    - '{{ command == ''remote_button_short_press'' }}'
+    - '{{ short_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 4 }}'
     sequence: !input 'single_press_4'
   - conditions:
-    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ double_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 1 }}'
     sequence: !input 'double_press_1'
   - conditions:
-    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ double_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 2 }}'
     sequence: !input 'double_press_2'
   - conditions:
-    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ double_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 3 }}'
     sequence: !input 'double_press_3'
   - conditions:
-    - '{{ command == ''remote_button_double_press'' }}'
+    - '{{ double_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 4 }}'
     sequence: !input 'double_press_4'
   - conditions:
-    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ long_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 1 }}'
     sequence: !input 'long_press_1'
   - conditions:
-    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ long_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 2 }}'
     sequence: !input 'long_press_2'
   - conditions:
-    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ long_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 3 }}'
     sequence: !input 'long_press_3'
   - conditions:
-    - '{{ command == ''remote_button_long_press'' }}'
+    - '{{ long_press }}'
     - '{{ cluster_id == 6 }}'
     - '{{ endpoint_id == 4 }}'
     sequence: !input 'long_press_4'
