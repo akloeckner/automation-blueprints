@@ -29,6 +29,17 @@ blueprint:
           unit_of_measurement: seconds
           mode: slider
           step: 1.0
+    close_delay:
+      name: Windows Close Wait Time
+      description: Time to delay after window closed before notifying HomeMatic.
+      default: 5
+      selector:
+        number:
+          min: 0.0
+          max: 600.0
+          unit_of_measurement: seconds
+          mode: slider
+          step: 1.0
     blocking_entity:
       name: (OPTIONAL) Blocking Entity
       description:
@@ -52,6 +63,7 @@ variables:
   climate_target: !input climate_entity
   climate_id: "{{ device_id(climate_target) }}"
   open_delay: !input open_delay
+  close_delay: !input close_delay
 trigger:
   - platform: state
     entity_id: !input window_entity
@@ -74,7 +86,7 @@ action:
       - platform: state
         entity_id: !input window_entity
         to: "off"
-        for: 5
+        for: !input close_delay
     continue_on_timeout: false
   - service: homematicip_local.set_device_value
     data:
