@@ -9,9 +9,10 @@ blueprint:
   input:
     trigger_entity:
       name: Trigger entity
-      description: The entity to copy the state from (must be a single entity id, if default template is used)
+      description: The entities to copy the state from (connected with `or`, if default templates are used)
       selector:
         entity:
+          multiple: true
     target_entity:
       name: Target entity
       description: The entity to copy the state to (must be a single entity id, if async_time is used)
@@ -31,7 +32,15 @@ blueprint:
     on_template:
       name: Trigger template for ON
       description: The template which has to render as true in the on state
-      default: "{{ is_state(trigger_entity, 'on') }}"
+      default: |
+        {{ expand(trigger_entity)
+           | map(attribute = 'state')
+           | select('==', 'on')
+           | list
+           | length
+           > 0 }}
+      selector:
+        template:
     on_for:
       name: Duration in ON state
       description: The duration for which the trigger template has to be true
@@ -41,7 +50,15 @@ blueprint:
     off_template:
       name: Trigger template for OFF
       description: The template which has to render as true in the off state
-      default: "{{ is_state(trigger_entity, 'off') }}"
+      default: |
+        {{ expand(trigger_entity)
+           | map(attribute = 'state')
+           | select('==', 'on')
+           | list
+           | length
+           <= 0 }}
+      selector:
+        template:
     off_for:
       name: Duration in OFF state
       description: The duration for which the trigger template has to be true
