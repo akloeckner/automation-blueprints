@@ -76,8 +76,14 @@ blueprint:
       selector:
         action: {}
     pre_actions:
-      name: Actions
+      name: Pre-Actions
       description: Actions when starting threshold is crossed
+      default: []
+      selector:
+        action: {}
+    post_actions:
+      name: Post-Actions
+      description: Actions when automation is stopped or finished
       default: []
       selector:
         action: {}
@@ -96,7 +102,9 @@ action:
 - if:
   - '{{ trigger.id == ''stop'' }}'
   then:
-  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop'.
+  - choose: []
+    default: !input post_actions
+  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop' with reason {{ trigger.event.event_data.reason }}.
 - parallel:
   - sequence:
     - wait_for_trigger:
@@ -107,7 +115,8 @@ action:
     - event: stop_appliance_has_finished
       event_data:
         entity_id: '{{ this.entity_id }}'
-    - stop: Stopping '{{ this.attributes.friendly_name }}' because device turned off.
+        reason: device powered off
+    - stop: Sent stop to '{{ this.attributes.friendly_name }}' because device powered off.
   - sequence:
     - choose: []
       default: !input pre_actions
@@ -121,6 +130,7 @@ action:
     - event: stop_appliance_has_finished
       event_data:
         entity_id: '{{ this.entity_id }}'
-    - stop: Stopping '{{ this.attributes.friendly_name }}' because actions finished.
+        reason: actions finished
+    - stop: Sent stop to '{{ this.attributes.friendly_name }}' because actions finished.
 mode: restart
 max_exceeded: info
