@@ -104,7 +104,7 @@ action:
   then:
   - choose: []
     default: !input post_actions
-  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop' with reason {{ trigger.event.event_data.reason }}.
+  - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop' with reason {{ trigger.event.data.reason }}.
 - parallel:
   - sequence:
     - wait_for_trigger:
