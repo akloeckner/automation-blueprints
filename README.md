@@ -1,6 +1,6 @@
 These are the blueprints I collected for my smart home:
 
-### [**react-when-appliance-finishes.yaml**](https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512)
+### [react-when-appliance-finishes.yaml](https://gist.github.com/akloeckner/744d7e3b2f234da9367c2ef0d3205512)
 
 Run some actions, when an appliance finishes.
 
