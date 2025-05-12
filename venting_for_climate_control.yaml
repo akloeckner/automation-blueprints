@@ -2,8 +2,34 @@ blueprint:
   name: Ventilation for climate control
   description: |
     Switch a ventilation device in order to achieve a climate set-point,
-    - if the desired relative humidity or temperature diverge from their set-points, and
-    - if the outside relative humidity and temperature are favorable.
+    - if the desired relative humidity or temperature diverge from their set-points more than a given tolerance, and
+    - if the outside relative humidity and temperature are favorable, and
+    - if venting will not worsen the room climate, if it is already outside outside the tolerances.
+
+    This is a sketch of the behavior for the relationship of inside relative humidity and inside/outside dewpoints to the blueprint's actions:
+
+                          ^ TD-in - TD_out
+                          |
+          OOOOOO|*********|/////////|XXXXXX
+          OOOOOO|*********|/////////|XXXXXX
+          ------+---------+---------+------ T_tol+T_dif
+          OOOOOO|*********|/////////|//////
+          OOOOOO|*********|/////////|//////
+          ------+---------+---------+------ T_tol
+          ******|*********|         |
+        <-------+---------+---------+-------> r_in - r_set
+                |         |*********|******
+          ------+---------+---------+------
+          //////|/////////|*********|OOOOOO
+          //////|/////////|*********|OOOOOO
+          ------+---------+---------+------
+          XXXXXX|/////////|*********|OOOOOO
+          XXXXXX|/////////|*********|OOOOOO
+                          |          r_tol
+                          v
+
+          XXX vent            /// tolerance
+          OOO prevent venting *** tolerance
   source_url: https://gist.github.com/akloeckner/008668ce8ea4504bf2bd168fc58e5eb4
   domain: automation
   input:
