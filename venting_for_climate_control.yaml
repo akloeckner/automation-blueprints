@@ -1,1 +1,346 @@
-.
+blueprint:
+  name: Ventilation for climate control
+  description: |
+    Switch a ventilation device in order to achieve a climate set-point,
+    - if the desired relative humidity or temperature diverge from their set-points, and
+    - if the outside relative humidity and temperature are favorable.
+  source_url: https://gist.github.com/akloeckner/008668ce8ea4504bf2bd168fc58e5eb4
+  domain: automation
+  input:
+    sensor_r_in:
+      name: Inside relative humidity sensor
+      description: The sensor to use as inside relative humidity
+      selector:
+        entity:
+          filter:
+          - domain: sensor
+            device_class: humidity
+    sensor_T_in:
+      name: Inside temperature sensor
+      description: The sensor to use as inside temperature
+      selector:
+        entity:
+          filter:
+          - domain: sensor
+            device_class: temperature
+    sensor_r_out:
+      name: Outside relative humidity sensor
+      description: The sensor to use as outside relative humidity
+      selector:
+        entity:
+          filter:
+          - domain: sensor
+            device_class: humidity
+    sensor_T_out:
+      name: Outside temperature sensor
+      description: The sensor to use as outside temperature
+      selector:
+        entity:
+          filter:
+          - domain: sensor
+            device_class: temperature
+    switch_fan:
+      name: Ventilator switch
+      description: The switch used to activate ventilation
+      selector:
+        entity:
+          filter:
+          - domain:
+            - switch
+            - input_boolean
+    r_set:
+      name: Relative humidity set-point
+      description: The relative humidity we are trying to achieve
+      #unit_of_measurement: '%'
+      default: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          mode: slider
+    r_tol:
+      name: Relative humidity tolerance
+      description: The difference to the set-point we will accept
+      #unit_of_measurement: '%'
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          step: 1
+          mode: slider
+    T_set:
+      name: Temperature set-point
+      description: The temperature we are trying to achieve
+      #unit_of_measurement: °C
+      default: 21
+      selector:
+        number:
+          min: 10
+          max: 30
+          step: 1
+          mode: slider
+    T_tol:
+      name: Temperature tolerance
+      description: The difference to the set-point we will accept
+      #unit_of_measurement: K
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 0.5
+          mode: slider
+    T_dif:
+      name: Required temperature difference
+      description: The temperature difference required for effective venting
+      #unit_of_measurement: K
+      default: 0.5
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 0.5
+          mode: slider
+    T_ice:
+      name: Ice prevention temperature
+      description: The minimum outside temperature required for venting
+      #unit_of_measurement: °C
+      default: 4
+      selector:
+        number:
+          min: -5
+          max: 5
+          step: 0.5
+          mode: slider
+    binary_blockers:
+      name: Binary entities to prevent ventilation
+      description: No ventilation will occur if any of these is `on`
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - binary_sensor
+            - input_boolean
+            - switch
+    switch_on_delay:
+      name: Delay before switching ventilation on
+      description: The ventilation conditions have to be met for this amount of time
+      default:
+        minutes: 10
+      selector:
+        duration:
+
+mode: single
+max_exceeded: silent
+
+trigger_variables:
+  r_set: !input 'r_set'
+  r_tol: !input 'r_tol'
+  T_set: !input 'T_set'
+  T_tol: !input 'T_tol'
+  T_dif: !input 'T_dif'
+  T_ice: !input 'T_ice'
+  sensor_r_in:     !input 'sensor_r_in'
+  sensor_T_in:     !input 'sensor_T_in'
+  sensor_r_out:    !input 'sensor_r_out'
+  sensor_T_out:    !input 'sensor_T_out'
+  switch_fan:      !input 'switch_fan'
+  binary_blockers: !input 'binary_blockers'
+
+triggers:
+  - alias: Venting on
+    trigger: template
+    id: "on"
+    for: !input 'switch_on_delay'
+    value_template: |-
+      {% set r_in  = states(sensor_r_in)
+                   | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)
+                   | float(T_set) %}
+      {% set r_out = states(sensor_r_out)
+                   | float(r_in) %}
+      {% set T_out = states(sensor_T_out)
+                   | float(T_in) %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {# Here's the underlying logic:
+         - vent, if r is definitely bad
+                 and it will effectively help
+         - prevent venting, if r is definitely bad
+                 and it will likely worsen
+
+                        ^ TD-in - TD_out
+                        |
+        OOOOOO|*********|/////////|XXXXXX
+        OOOOOO|*********|/////////|XXXXXX
+        ------+---------+---------+------ T_tol+T_dif
+        OOOOOO|*********|/////////|//////
+        OOOOOO|*********|/////////|//////
+        ------+---------+---------+------ T_tol
+        ******|*********|         |
+      <-------+---------+---------+-------> r_in - r_set
+              |         |*********|******
+        ------+---------+---------+------
+        //////|/////////|*********|OOOOOO
+        //////|/////////|*********|OOOOOO
+        ------+---------+---------+------
+        XXXXXX|/////////|*********|OOOOOO
+        XXXXXX|/////////|*********|OOOOOO
+                        |          r_tol
+                        v
+
+        XXX vent            /// tolerance
+        OOO prevent venting *** tolerance
+      #}
+
+
+      {# (
+        (
+          {{ r_in - r_set > +r_tol }} and
+          {{ D_in - D_out > +T_tol+T_dif }}
+        or
+          {{ r_in - r_set < -r_tol }} and
+          {{ D_in - D_out < -T_tol-T_dif }}
+        or
+          {{ T_in - T_set > +T_tol }} and
+          {{ T_in - T_out > +T_tol+T_dif }}
+        or
+          {{ T_in - T_set < -T_tol }} and
+          {{ T_in - T_out < -T_tol-T_dif }}
+        ) and not (
+          {{ r_in - r_set > +r_tol }} and
+          {{ D_in - D_out < -T_tol }}
+        or
+          {{ r_in - r_set < -r_tol }} and
+          {{ D_in - D_out > +T_tol }}
+        or
+          {{ T_in - T_set > +T_tol }} and
+          {{ T_in - T_out < -T_tol }}
+        or
+          {{ T_in - T_set < -T_tol }} and
+          {{ T_in - T_out > +T_tol }}
+        ) and
+        {{ T_out > T_ice + T_tol }} and
+        {{ binary_blockers
+         | expand
+         | selectattr('state', 'eq', 'on')
+         | list
+         | count
+         == 0 }}
+      ) #}
+
+      {% set r_tol_on  = 1 * r_tol %}
+      {% set T_tol_on  = 1 * T_tol %}
+      {% set r_tol_off = 0 * r_tol %}
+      {% set T_tol_off = 0 * T_tol %}
+      {{ (
+        (
+          r_in - r_set > +r_tol_on and
+          D_in - D_out > +T_tol_on+T_dif
+        or
+          r_in - r_set < -r_tol_on and
+          D_in - D_out < -T_tol_on-T_dif
+        or
+          T_in - T_set > +T_tol_on and
+          T_in - T_out > +T_tol_on+T_dif
+        or
+          T_in - T_set < -T_tol_on and
+          T_in - T_out < -T_tol_on-T_dif
+        ) and not (
+          r_in - r_set > +r_tol_off and
+          D_in - D_out < -T_tol_off
+        or
+          r_in - r_set < -r_tol_off and
+          D_in - D_out > +T_tol_off
+        or
+          T_in - T_set > +T_tol_off and
+          T_in - T_out < -T_tol_off
+        or
+          T_in - T_set < -T_tol_off and
+          T_in - T_out > +T_tol_off
+        ) and
+        T_out > T_ice + T_tol_on and
+        binary_blockers
+         | expand
+         | selectattr('state', 'eq', 'on')
+         | list
+         | count
+         == 0
+      ) }}
+  - alias: Venting off
+    trigger: template
+    id: "off"
+    value_template: |-
+      {% set r_in  = states(sensor_r_in)
+                   | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)
+                   | float(T_set) %}
+      {% set r_out = states(sensor_r_out)
+                   | float(r_in) %}
+      {% set T_out = states(sensor_T_out)
+                   | float(T_in) %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {% set r_tol_on  = 0 * r_tol %}
+      {% set T_tol_on  = 0 * T_tol %}
+      {% set r_tol_off = 1 * r_tol %}
+      {% set T_tol_off = 1 * T_tol %}
+      {{ not (
+        (
+          r_in - r_set > +r_tol_on and
+          D_in - D_out > +T_tol_on+T_dif
+        or
+          r_in - r_set < -r_tol_on and
+          D_in - D_out < -T_tol_on-T_dif
+        or
+          T_in - T_set > +T_tol_on and
+          T_in - T_out > +T_tol_on+T_dif
+        or
+          T_in - T_set < -T_tol_on and
+          T_in - T_out < -T_tol_on-T_dif
+        ) and not (
+          r_in - r_set > +r_tol_off and
+          D_in - D_out < -T_tol_off
+        or
+          r_in - r_set < -r_tol_off and
+          D_in - D_out > +T_tol_off
+        or
+          T_in - T_set > +T_tol_off and
+          T_in - T_out < -T_tol_off
+        or
+          T_in - T_set < -T_tol_off and
+          T_in - T_out > +T_tol_off
+        ) and
+        T_out > T_ice + T_tol_on and
+        binary_blockers
+         | expand
+         | selectattr('state', 'eq', 'on')
+         | list
+         | count
+         == 0
+      ) }}
+
+conditions: []
+
+actions:
+  - if:
+      - condition: trigger
+        id:
+          - "on"
+    then:
+      - action: homeassistant.turn_on
+        target:
+          entity_id: "{{ switch_fan }}"
+    else:
+      - action: homeassistant.turn_off
+        target:
+          entity_id: "{{ switch_fan }}"
