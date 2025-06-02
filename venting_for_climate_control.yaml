@@ -195,109 +195,20 @@ triggers:
       {% set D_in  = TD(r_in,  T_in)  | float(99) %}
       {% set D_out = TD(r_out, T_out) | float(99) %}
 
-      {# Here's the underlying logic:
-         - vent, if r is definitely bad
-                 and it will effectively help
-         - prevent venting, if r is definitely bad
-                 and it will likely worsen
-
-                        ^ TD-in - TD_out
-                        |
-        OOOOOO|*********|/////////|XXXXXX
-        OOOOOO|*********|/////////|XXXXXX
-        ------+---------+---------+------ T_tol+T_dif
-        OOOOOO|*********|/////////|//////
-        OOOOOO|*********|/////////|//////
-        ------+---------+---------+------ T_tol
-        ******|*********|         |
-      <-------+---------+---------+-------> r_in - r_set
-              |         |*********|******
-        ------+---------+---------+------
-        //////|/////////|*********|OOOOOO
-        //////|/////////|*********|OOOOOO
-        ------+---------+---------+------
-        XXXXXX|/////////|*********|OOOOOO
-        XXXXXX|/////////|*********|OOOOOO
-                        |          r_tol
-                        v
-
-        XXX vent            /// tolerance
-        OOO prevent venting *** tolerance
-      #}
-
-
-      {# (
-        (
-          {{ r_in - r_set > +r_tol }} and
-          {{ D_in - D_out > +T_tol+T_dif }}
-        or
-          {{ r_in - r_set < -r_tol }} and
-          {{ D_in - D_out < -T_tol-T_dif }}
-        or
-          {{ T_in - T_set > +T_tol }} and
-          {{ T_in - T_out > +T_tol+T_dif }}
-        or
-          {{ T_in - T_set < -T_tol }} and
-          {{ T_in - T_out < -T_tol-T_dif }}
-        ) and not (
-          {{ r_in - r_set > +r_tol }} and
-          {{ D_in - D_out < -T_tol }}
-        or
-          {{ r_in - r_set < -r_tol }} and
-          {{ D_in - D_out > +T_tol }}
-        or
-          {{ T_in - T_set > +T_tol }} and
-          {{ T_in - T_out < -T_tol }}
-        or
-          {{ T_in - T_set < -T_tol }} and
-          {{ T_in - T_out > +T_tol }}
-        ) and
-        {{ T_out > T_ice + T_tol }} and
-        {{ binary_blockers
-         | expand
-         | selectattr('state', 'eq', 'on')
-         | list
-         | count
-         == 0 }}
-      ) #}
-
-      {% set r_tol_on  = 1 * r_tol %}
-      {% set T_tol_on  = 1 * T_tol %}
-      {% set r_tol_off = 0 * r_tol %}
-      {% set T_tol_off = 0 * T_tol %}
       {{ (
         (
-          r_in - r_set > +r_tol_on and
-          D_in - D_out > +T_tol_on+T_dif
+          r_in - r_set > +r_tol and
+          D_in - D_out > +T_tol+T_dif
         or
-          r_in - r_set < -r_tol_on and
-          D_in - D_out < -T_tol_on-T_dif
+          r_in - r_set < -r_tol and
+          D_in - D_out < -T_tol-T_dif
         or
-          T_in - T_set > +T_tol_on and
-          T_in - T_out > +T_tol_on+T_dif
+          T_in - T_set > +T_tol and
+          T_in - T_out > +T_tol+T_dif
         or
-          T_in - T_set < -T_tol_on and
-          T_in - T_out < -T_tol_on-T_dif
-        ) and not (
-          r_in - r_set > +r_tol_off and
-          D_in - D_out < -T_tol_off
-        or
-          r_in - r_set < -r_tol_off and
-          D_in - D_out > +T_tol_off
-        or
-          T_in - T_set > +T_tol_off and
-          T_in - T_out < -T_tol_off
-        or
-          T_in - T_set < -T_tol_off and
-          T_in - T_out > +T_tol_off
-        ) and
-        T_out > T_ice + T_tol_on and
-        binary_blockers
-         | expand
-         | selectattr('state', 'eq', 'on')
-         | list
-         | count
-         == 0
+          T_in - T_set < -T_tol and
+          T_in - T_out < -T_tol-T_dif
+        )
       ) }}
   - alias: Venting off
     trigger: template
@@ -316,44 +227,57 @@ triggers:
       {% set D_in  = TD(r_in,  T_in)  | float(99) %}
       {% set D_out = TD(r_out, T_out) | float(99) %}
 
-      {% set r_tol_on  = 0 * r_tol %}
-      {% set T_tol_on  = 0 * T_tol %}
-      {% set r_tol_off = 1 * r_tol %}
-      {% set T_tol_off = 1 * T_tol %}
+      {% set r_tol  = 0 %}
+      {% set T_tol  = 0 %}
       {{ not (
         (
-          r_in - r_set > +r_tol_on and
-          D_in - D_out > +T_tol_on+T_dif
+          r_in - r_set > +r_tol and
+          D_in - D_out > +T_tol+T_dif
         or
-          r_in - r_set < -r_tol_on and
-          D_in - D_out < -T_tol_on-T_dif
+          r_in - r_set < -r_tol and
+          D_in - D_out < -T_tol-T_dif
         or
-          T_in - T_set > +T_tol_on and
-          T_in - T_out > +T_tol_on+T_dif
+          T_in - T_set > +T_tol and
+          T_in - T_out > +T_tol+T_dif
         or
-          T_in - T_set < -T_tol_on and
-          T_in - T_out < -T_tol_on-T_dif
-        ) and not (
-          r_in - r_set > +r_tol_off and
-          D_in - D_out < -T_tol_off
-        or
-          r_in - r_set < -r_tol_off and
-          D_in - D_out > +T_tol_off
-        or
-          T_in - T_set > +T_tol_off and
-          T_in - T_out < -T_tol_off
-        or
-          T_in - T_set < -T_tol_off and
-          T_in - T_out > +T_tol_off
-        ) and
-        T_out > T_ice + T_tol_on and
+          T_in - T_set < -T_tol and
+          T_in - T_out < -T_tol-T_dif
+        )
+      ) }}
+  - alias: No-go condition
+    trigger: template
+    id: "nogo"
+    value_template: &nogo |-
+      {% set r_in  = states(sensor_r_in)
+                   | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)
+                   | float(T_set) %}
+      {% set r_out = states(sensor_r_out)
+                   | float(r_in) %}
+      {% set T_out = states(sensor_T_out)
+                   | float(T_in) %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {{
+        r_in - r_set > +r_tol and
+        D_in - D_out < -T_tol or
+        r_in - r_set < -r_tol and
+        D_in - D_out > +T_tol or
+        T_in - T_set > +T_tol and
+        T_in - T_out < -T_tol or
+        T_in - T_set < -T_tol and
+        T_in - T_out > +T_tol or
+        T_out < T_ice or
         binary_blockers
          | expand
          | selectattr('state', 'eq', 'on')
          | list
          | count
-         == 0
-      ) }}
+         > 0
+      }}
 
 conditions: []
 
@@ -361,12 +285,20 @@ actions:
   - if:
       - condition: trigger
         id:
-          - "on"
+          - 'on'
     then:
-      - action: homeassistant.turn_on
+      - alias: If not in no-go condition...
+        condition: not
+        conditions:
+          - alias: No-go condition
+            condition: template
+            value_template: *nogo
+      - alias: Switch on fan
+        action: homeassistant.turn_on
         target:
-          entity_id: "{{ switch_fan }}"
+          entity_id: '{{ switch_fan }}'
     else:
-      - action: homeassistant.turn_off
+      - alias: Switch off fan
+        action: homeassistant.turn_off
         target:
-          entity_id: "{{ switch_fan }}"
+          entity_id: '{{ switch_fan }}'
