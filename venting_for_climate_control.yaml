@@ -4,32 +4,33 @@ blueprint:
     Switch a ventilation device in order to achieve a climate set-point,
     - if the desired relative humidity or temperature diverge from their set-points more than a given tolerance, and
     - if the outside relative humidity and temperature are favorable, and
-    - if venting will not worsen the room climate, if it is already outside outside the tolerances.
+    - if venting will not worsen the room climate, if it is already outside the tolerances.
 
-    This is a sketch of the behavior for the relationship of inside relative humidity and inside/outside dewpoints to the blueprint's actions:
+    <details>
+    <summary><strong>Detailed switching scheme:</strong></summary>
 
-                          ^ TD-in - TD_out
-                          |
-          OOOOOO|*********|/////////|XXXXXX
-          OOOOOO|*********|/////////|XXXXXX
-          ------+---------+---------+------ T_tol+T_dif
-          OOOOOO|*********|/////////|//////
-          OOOOOO|*********|/////////|//////
-          ------+---------+---------+------ T_tol
-          ******|*********|         |
-        <-------+---------+---------+-------> r_in - r_set
-                |         |*********|******
-          ------+---------+---------+------
-          //////|/////////|*********|OOOOOO
-          //////|/////////|*********|OOOOOO
-          ------+---------+---------+------
-          XXXXXX|/////////|*********|OOOOOO
-          XXXXXX|/////////|*********|OOOOOO
-                          |          r_tol
-                          v
+    This is a sketch how inside relative humidity is controlled using inside/outside dewpoints. The same areas are defined for controlling inside temperature using inside/outside temperature.
 
-          XXX vent            /// tolerance
-          OOO prevent venting *** tolerance
+                 ^ TD_in - TD_out
+                 |
+          OOO    |////XXXXXX
+          OOO    |////XXXXXX +D_eff
+          OOO    |//////////
+                 |////////// +D_min
+                 |
+        <--------+-----------> r_in - r_set
+                 |
+          ///////|
+          ///////|    OOOOOO -T_tol
+          XXX////|    OOOOOO
+          XXX////|    OOOOOO
+                 |<--> r_tol
+                 v
+
+    `XXX` Ventilation turned on in this area.
+    `///` Ventilation turned off when leaving this tolerance area.
+    `OOO` Ventilation suppressed to not worsen climate.
+    </details>
   source_url: https://gist.github.com/akloeckner/008668ce8ea4504bf2bd168fc58e5eb4
   domain: automation
   input:
@@ -100,29 +101,40 @@ blueprint:
       name: Temperature set-point
       description: The temperature we are trying to achieve
       #unit_of_measurement: °C
-      default: 21
+      default: 20
       selector:
         number:
           min: 10
           max: 30
-          step: 1
+          step: 0.5
           mode: slider
     T_tol:
       name: Temperature tolerance
       description: The difference to the set-point we will accept
       #unit_of_measurement: K
-      default: 1
+      default: 2
       selector:
         number:
           min: 1
           max: 10
           step: 0.5
           mode: slider
-    T_dif:
-      name: Required temperature difference
-      description: The temperature difference required for effective venting
+    D_min:
+      name: Minimum required temperature difference
+      description: The minimum temperature difference required for venting
       #unit_of_measurement: K
       default: 0.5
+      selector:
+        number:
+          min: -5
+          max: 5
+          step: 0.5
+          mode: slider
+    D_eff:
+      name: Effective venting temperature difference
+      description: The temperature difference required for effective venting
+      #unit_of_measurement: K
+      default: 1.5
       selector:
         number:
           min: 0
@@ -133,7 +145,7 @@ blueprint:
       name: Ice prevention temperature
       description: The minimum outside temperature required for venting
       #unit_of_measurement: °C
-      default: 4
+      default: 5
       selector:
         number:
           min: -5
@@ -142,7 +154,7 @@ blueprint:
           mode: slider
     binary_blockers:
       name: Binary entities to prevent ventilation
-      description: No ventilation will occur if any of these is `on`
+      description: No ventilation will occur if any of these are `on`
       selector:
         entity:
           multiple: true
@@ -167,7 +179,8 @@ trigger_variables:
   r_tol: !input 'r_tol'
   T_set: !input 'T_set'
   T_tol: !input 'T_tol'
-  T_dif: !input 'T_dif'
+  D_min: !input 'D_min'
+  D_eff: !input 'D_eff'
   T_ice: !input 'T_ice'
   sensor_r_in:     !input 'sensor_r_in'
   sensor_T_in:     !input 'sensor_T_in'
@@ -177,85 +190,129 @@ trigger_variables:
   binary_blockers: !input 'binary_blockers'
 
 triggers:
-  - alias: Venting on
-    trigger: template
-    id: "on"
-    for: !input 'switch_on_delay'
-    value_template: |-
-      {% set r_in  = states(sensor_r_in)
-                   | float(r_set) %}
-      {% set T_in  = states(sensor_T_in)
-                   | float(T_set) %}
-      {% set r_out = states(sensor_r_out)
-                   | float(r_in) %}
-      {% set T_out = states(sensor_T_out)
-                   | float(T_in) %}
+  - alias: Venting on (r high)
+    value_template: &r_high |-
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
 
       {%- from 'humidity.jinja' import TD %}
       {% set D_in  = TD(r_in,  T_in)  | float(99) %}
       {% set D_out = TD(r_out, T_out) | float(99) %}
 
       {{ (
-        (
-          r_in - r_set > +r_tol and
-          D_in - D_out > +T_tol+T_dif
-        or
-          r_in - r_set < -r_tol and
-          D_in - D_out < -T_tol-T_dif
-        or
-          T_in - T_set > +T_tol and
-          T_in - T_out > +T_tol+T_dif
-        or
-          T_in - T_set < -T_tol and
-          T_in - T_out < -T_tol-T_dif
-        )
+        r_in - r_set > +r_tol and
+        D_in - D_out > +D_eff
       ) }}
-  - alias: Venting off
-    trigger: template
-    id: "off"
+    << : &on
+      trigger: template
+      id: "on"
+      for: !input 'switch_on_delay'
+  - alias: Venting on (r low)
+    value_template: &r_low |-
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {{ (
+        r_in - r_set < -r_tol and
+        D_in - D_out < -D_eff
+      ) }}
+    << : *on
+  - alias: Venting on (T high)
+    value_template: &T_high |-
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {{ (
+        T_in - T_set > +T_tol and
+        T_in - T_out > +D_eff
+      ) }}
+    << : *on
+  - alias: Venting on (T low)
+    value_template: &T_low |-
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {{ (
+        T_in - T_set < -T_tol and
+        T_in - T_out < -D_eff
+      ) }}
+    << : *on
+
+  - alias: Venting off (not r high)
     value_template: |-
-      {% set r_in  = states(sensor_r_in)
-                   | float(r_set) %}
-      {% set T_in  = states(sensor_T_in)
-                   | float(T_set) %}
-      {% set r_out = states(sensor_r_out)
-                   | float(r_in) %}
-      {% set T_out = states(sensor_T_out)
-                   | float(T_in) %}
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
 
       {%- from 'humidity.jinja' import TD %}
       {% set D_in  = TD(r_in,  T_in)  | float(99) %}
       {% set D_out = TD(r_out, T_out) | float(99) %}
 
       {% set r_tol  = 0 %}
+      {{ not (
+        r_in - r_set > +r_tol and
+        D_in - D_out > +D_min
+      ) }}
+    << : &off
+      trigger: template
+      id: "off"
+  - alias: Venting off (not r low)
+    value_template: |-
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {% set r_tol  = 0 %}
+      {{ not (
+        r_in - r_set < -r_tol and
+        D_in - D_out < -D_min
+      ) }}
+    << : *off
+  - alias: Venting off (not T high)
+    value_template: |-
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
       {% set T_tol  = 0 %}
       {{ not (
-        (
-          r_in - r_set > +r_tol and
-          D_in - D_out > +T_tol+T_dif
-        or
-          r_in - r_set < -r_tol and
-          D_in - D_out < -T_tol-T_dif
-        or
-          T_in - T_set > +T_tol and
-          T_in - T_out > +T_tol+T_dif
-        or
-          T_in - T_set < -T_tol and
-          T_in - T_out < -T_tol-T_dif
-        )
+        T_in - T_set > +T_tol and
+        T_in - T_out > +D_min
       ) }}
+    << : *off
+  - alias: Venting off (not T low)
+    value_template: |-
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {% set T_tol  = 0 %}
+      {{ not (
+        T_in - T_set < -T_tol and
+        T_in - T_out < -D_min
+      ) }}
+    << : *off
+
   - alias: No-go condition
     trigger: template
     id: "nogo"
     value_template: &nogo |-
-      {% set r_in  = states(sensor_r_in)
-                   | float(r_set) %}
-      {% set T_in  = states(sensor_T_in)
-                   | float(T_set) %}
-      {% set r_out = states(sensor_r_out)
-                   | float(r_in) %}
-      {% set T_out = states(sensor_T_out)
-                   | float(T_in) %}
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
 
       {%- from 'humidity.jinja' import TD %}
       {% set D_in  = TD(r_in,  T_in)  | float(99) %}
@@ -263,13 +320,13 @@ triggers:
 
       {{
         r_in - r_set > +r_tol and
-        D_in - D_out < -T_tol or
+        D_in - D_out < -D_min or
         r_in - r_set < -r_tol and
-        D_in - D_out > +T_tol or
+        D_in - D_out > +D_min or
         T_in - T_set > +T_tol and
-        T_in - T_out < -T_tol or
+        T_in - T_out < -D_min or
         T_in - T_set < -T_tol and
-        T_in - T_out > +T_tol or
+        T_in - T_out > +D_min or
         T_out < T_ice or
         binary_blockers
          | expand
@@ -279,26 +336,46 @@ triggers:
          > 0
       }}
 
-conditions: []
+conditions:
+  - alias: If fan needs switching
+    condition: template
+    value_template: "{{ not is_state(switch_fan, trigger.id) }}"
 
 actions:
-  - if:
-      - condition: trigger
-        id:
-          - 'on'
-    then:
-      - alias: If not in no-go condition...
-        condition: not
-        conditions:
-          - alias: No-go condition
-            condition: template
-            value_template: *nogo
-      - alias: Switch on fan
-        action: homeassistant.turn_on
-        target:
-          entity_id: '{{ switch_fan }}'
-    else:
-      - alias: Switch off fan
-        action: homeassistant.turn_off
-        target:
-          entity_id: '{{ switch_fan }}'
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - nogo
+        sequence:
+          - alias: Switch off fan
+            action: homeassistant.turn_off
+            target:
+              entity_id: !input 'switch_fan'
+      - conditions:
+          - condition: trigger
+            id:
+              - "on"
+        sequence:
+          - alias: If not in no-go condition...
+            not:
+              - *nogo
+          - alias: Switch on fan
+            action: homeassistant.turn_on
+            target:
+              entity_id: !input 'switch_fan'
+      - conditions:
+          - condition: trigger
+            id:
+              - "off"
+        sequence:
+          - alias: If not in venting condition...
+            not:
+              - *r_high
+              - *r_low
+              - *T_high
+              - *T_low
+          - alias: Switch off fan
+            action: homeassistant.turn_off
+            target:
+              entity_id: !input 'switch_fan'
