@@ -329,11 +329,11 @@ triggers:
         T_in - T_out > +D_min or
         T_out < T_ice or
         binary_blockers
-         | expand
-         | selectattr('state', 'eq', 'on')
-         | list
-         | count
-         > 0
+        | expand
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count
+        > 0
       }}
 
 conditions:
