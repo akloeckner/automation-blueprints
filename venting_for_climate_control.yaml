@@ -188,6 +188,7 @@ trigger_variables:
   sensor_T_out:    !input 'sensor_T_out'
   switch_fan:      !input 'switch_fan'
   binary_blockers: !input 'binary_blockers'
+  phase: triggers
 
 triggers:
   - alias: Venting on (r high)
@@ -376,12 +377,17 @@ triggers:
     variables:
       target: 'on'
 
+variables:
+  phase: conditions
+
 conditions:
   - alias: If fan needs switching
     condition: template
     value_template: "{{ not is_state(switch_fan, target) }}"
 
 actions:
+  - variables:
+      phase: actions
   - choose:
       - conditions:
           - condition: trigger
