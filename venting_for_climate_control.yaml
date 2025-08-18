@@ -188,6 +188,7 @@ trigger_variables:
   sensor_T_out:    !input 'sensor_T_out'
   switch_fan:      !input 'switch_fan'
   binary_blockers: !input 'binary_blockers'
+  phase: triggers
 
 triggers:
   - alias: Venting on (r high)
@@ -209,6 +210,8 @@ triggers:
       trigger: template
       id: "on"
       for: !input 'switch_on_delay'
+      variables:
+        target: 'on'
   - alias: Venting on (r low)
     value_template: &r_low |-
       {% set r_in  = states(sensor_r_in)  | float(r_set) %}
@@ -265,6 +268,8 @@ triggers:
     << : &off
       trigger: template
       id: "off"
+      variables:
+        target: 'off'
   - alias: Venting off (not r low)
     value_template: |-
       {% set r_in  = states(sensor_r_in)  | float(r_set) %}
@@ -329,19 +334,60 @@ triggers:
         T_in - T_out > +D_min or
         T_out < T_ice or
         binary_blockers
-         | expand
-         | selectattr('state', 'eq', 'on')
-         | list
-         | count
-         > 0
+        | expand
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count
+        > 0
       }}
+    variables:
+      target: 'off'
+
+  - alias: Go condition (not no-go)
+    trigger: template
+    id: "go"
+    for: !input 'switch_on_delay'
+    value_template: &go |-
+      {% set r_in  = states(sensor_r_in)  | float(r_set) %}
+      {% set T_in  = states(sensor_T_in)  | float(T_set) %}
+      {% set r_out = states(sensor_r_out) | float(r_in)  %}
+      {% set T_out = states(sensor_T_out) | float(T_in)  %}
+
+      {%- from 'humidity.jinja' import TD %}
+      {% set D_in  = TD(r_in,  T_in)  | float(99) %}
+      {% set D_out = TD(r_out, T_out) | float(99) %}
+
+      {{ not(
+        r_in - r_set > +r_tol and
+        D_in - D_out < -D_min or
+        r_in - r_set < -r_tol and
+        D_in - D_out > +D_min or
+        T_in - T_set > +T_tol and
+        T_in - T_out < -D_min or
+        T_in - T_set < -T_tol and
+        T_in - T_out > +D_min or
+        T_out < T_ice or
+        binary_blockers
+        | expand
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count
+        > 0
+      ) }}
+    variables:
+      target: 'on'
+
+variables:
+  phase: conditions
 
 conditions:
   - alias: If fan needs switching
     condition: template
-    value_template: "{{ not is_state(switch_fan, trigger.id) }}"
+    value_template: "{{ not is_state(switch_fan, target) }}"
 
 actions:
+  - variables:
+      phase: actions
   - choose:
       - conditions:
           - condition: trigger
@@ -377,5 +423,20 @@ actions:
               - *T_low
           - alias: Switch off fan
             action: homeassistant.turn_off
+            target:
+              entity_id: !input 'switch_fan'
+      - conditions:
+          - condition: trigger
+            id:
+              - "go"
+        sequence:
+          - alias: If in venting condition...
+            or:
+              - *r_high
+              - *r_low
+              - *T_high
+              - *T_low
+          - alias: Switch on fan
+            action: homeassistant.turn_on
             target:
               entity_id: !input 'switch_fan'
