@@ -209,6 +209,8 @@ triggers:
       trigger: template
       id: "on"
       for: !input 'switch_on_delay'
+      variables:
+        target: 'on'
   - alias: Venting on (r low)
     value_template: &r_low |-
       {% set r_in  = states(sensor_r_in)  | float(r_set) %}
@@ -265,6 +267,8 @@ triggers:
     << : &off
       trigger: template
       id: "off"
+      variables:
+        target: 'off'
   - alias: Venting off (not r low)
     value_template: |-
       {% set r_in  = states(sensor_r_in)  | float(r_set) %}
@@ -335,11 +339,13 @@ triggers:
         | count
         > 0
       }}
+    variables:
+      target: 'off'
 
 conditions:
   - alias: If fan needs switching
     condition: template
-    value_template: "{{ not is_state(switch_fan, trigger.id) }}"
+    value_template: "{{ not is_state(switch_fan, target) }}"
 
 actions:
   - choose:
