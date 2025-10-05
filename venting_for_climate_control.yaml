@@ -173,6 +173,8 @@ blueprint:
 
 mode: single
 max_exceeded: silent
+trace:
+  stored_traces: 20
 
 trigger_variables:
   r_set: !input 'r_set'
