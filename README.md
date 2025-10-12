@@ -18,4 +18,8 @@ Use multi-button Tuya Zigbee remote controls.
 
 ### [venting_for_climate_control.yaml](https://gist.github.com/akloeckner/008668ce8ea4504bf2bd168fc58e5eb4)
 
-Use a vwntilation to control room climate
+Use a ventilation device to control temperature and humidity.
+
+### [window-open-notify-homematic-ip.yaml](https://gist.github.com/akloeckner/8e10ccc4fd5325a2dff95abb6886c943)
+
+Reduce target temperature of HomeMatic climate devices, when windows are opened.
