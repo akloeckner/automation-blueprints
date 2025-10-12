@@ -1,5 +1,5 @@
 blueprint:
-  name: Window Open, Notify HomeMatic IP Local CCU
+  name: Set window open mode on HomeMatic thermostats
   description:
     An automation blueprint that reduces the set temperature of your climate
     device or group if a window sensor is open for more than the preset wait time.
@@ -9,91 +9,113 @@ blueprint:
     again in order to restore the climate entity temperature after 5 seconds. It has an optional blocking
     entity to prevent the automation running unnecessarily, for example during the
     Summer season.
+  source_url: https://gist.github.com/akloeckner/8e10ccc4fd5325a2dff95abb6886c943
   domain: automation
   input:
-    window_entity:
-      name: Window Sensor
-      description: The window sensor that will control the climate entity.
+    window_entities:
+      name: Window or door sensors
+      description: The sensors that will control the climate entity
       selector:
         entity:
-          domain: binary_sensor
+          filter:
+            domain: binary_sensor
+            device_class:
+              - window
+              - door
+              - garage_door
+              - opening
+          multiple: true
+    climate_entity:
+      name: HomeMatic climate device
+      description: The climate entity that is controlled by the window sensor
+      selector:
+        entity:
+          filter:
+            domain: climate
+            integration: homematicip_local
           multiple: false
     open_delay:
-      name: Windows Open Wait Time
-      description: Time to delay after window opens before notifying HomeMatic.
-      default: 30
-      selector:
-        number:
-          min: 0.0
-          max: 600.0
-          unit_of_measurement: seconds
-          mode: slider
-          step: 1.0
-    close_delay:
-      name: Windows Close Wait Time
-      description: Time to delay after window closed before notifying HomeMatic.
-      default: 5
-      selector:
-        number:
-          min: 0.0
-          max: 600.0
-          unit_of_measurement: seconds
-          mode: slider
-          step: 1.0
-    blocking_entity:
-      name: (OPTIONAL) Blocking Entity
-      description:
-        If this entity's state is off, it will prevent the automation from
-        running. E.g. summer mode or away mode.
+      name: Windows open delay
+      description: Time to delay after windows open before reducing heating
       default:
+        minutes: 10
       selector:
-        entity:
-          domain: input_boolean
-          multiple: false
-    climate_entity:
-      name: Climate Device
-      description: The climate entity that is controlled by the window sensor.
+        duration:
+    close_delay:
+      name: Windows close delay
+      description: Time to delay after windows close before reducing heating
+      default:
+        seconds: 5
       selector:
-        entity:
-          domain: climate
-          multiple: false
-  source_url: https://gist.github.com/akloeckner/8e10ccc4fd5325a2dff95abb6886c943
-variables:
-  blocking_entity: !input blocking_entity
-  climate_target: !input climate_entity
-  climate_id: "{{ device_id(climate_target) }}"
-  open_delay: !input open_delay
-  close_delay: !input close_delay
-trigger:
-  - platform: state
-    entity_id: !input window_entity
-    to: "on"
-    for: !input open_delay
-condition:
-  - condition: template
-    value_template:
-      "{{ (blocking_entity == none) or (states[blocking_entity].state
-      == 'on') }}"
-action:
-  - service: homematicip_local.set_device_value
-    data:
-      device_id: "{{ climate_id }}"
-      channel: 1
-      parameter: WINDOW_STATE
-      value: "1"
-      value_type: int
-  - wait_for_trigger:
-      - platform: state
-        entity_id: !input window_entity
-        to: "off"
-        for: !input close_delay
-    continue_on_timeout: false
-  - service: homematicip_local.set_device_value
-    data:
-      device_id: "{{ climate_id }}"
-      channel: 1
-      parameter: WINDOW_STATE
-      value: "0"
-      value_type: int
+        duration:
+    conditions:
+      name: Additional conditions to check
+      description: >
+        The automation will only run, if all conditions are true. The variables
+        `window_entities` and `climate_entity` are available to be used in templates.
+      default: []
+      selector:
+        condition:
+
 mode: restart
 max_exceeded: silent
+
+trigger_variables:
+  window_entities: !input window_entities
+triggers:
+  - alias: Windows open
+    trigger: template
+    id: open
+    for: !input open_delay
+    value_template: |-
+      {{
+        window_entities
+        | expand
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count
+        > 0
+      }}
+  - alias: Windows close
+    trigger: template
+    id: close
+    for: !input close_delay
+    value_template: |-
+      {{
+        window_entities
+        | expand
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count
+        <= 0
+      }}
+
+variables:
+  climate_entity: !input climate_entity
+  climate_id: "{{ device_id(climate_entity) }}"
+conditions: !input conditions
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id:
+              - open
+        sequence:
+          - service: homematicip_local.set_device_value
+            data:
+              << : &window_state
+                device_id: "{{ climate_id }}"
+                channel: 1
+                parameter: WINDOW_STATE
+                value_type: int
+              value: "1"
+      - conditions:
+          - condition: trigger
+            id:
+              - close
+        sequence:
+          - service: homematicip_local.set_device_value
+            data:
+              << : *window_state
+              value: "0"
