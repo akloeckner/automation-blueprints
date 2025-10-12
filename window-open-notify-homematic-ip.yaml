@@ -57,7 +57,7 @@ blueprint:
         entity:
           domain: climate
           multiple: false
-  source_url: https://gist.github.com/smoki3/9e38e03d6ae180326ab1c80282ec6d78
+  source_url: https://gist.github.com/akloeckner/8e10ccc4fd5325a2dff95abb6886c943
 variables:
   blocking_entity: !input blocking_entity
   climate_target: !input climate_entity
