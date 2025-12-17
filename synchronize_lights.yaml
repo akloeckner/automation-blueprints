@@ -65,6 +65,16 @@ blueprint:
       default: '00:00:00'
       selector:
         time: {}
+    action:
+      name: Action to carry out
+      description: The actual action used to set the target entity's state
+      default:
+        - alias: Set the target state
+          service: "homeassistant.turn_{{ target_state }}"
+          data_template:
+            entity_id: "{{ target_entity }}"
+      selector:
+        action: {}
 
 mode: parallel
 
@@ -93,8 +103,4 @@ variables:
       {{ trigger.id }}
     {% endif %}
 
-action:
-- alias: Set the target state
-  service: "homeassistant.turn_{{ target_state }}"
-  data_template:
-    entity_id: "{{ target_entity }}"
+action: !input action
