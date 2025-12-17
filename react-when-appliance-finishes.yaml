@@ -70,20 +70,20 @@ blueprint:
         minutes: 0
       selector:
         duration: {}
-    actions:
-      name: Actions
-      description: Actions (e.g. pushing a notification, TTS announcement, ...)
-      selector:
-        action: {}
     pre_actions:
-      name: Pre-Actions
-      description: Actions when starting threshold is crossed
+      name: Starting Actions
+      description: Actions when appliance has started (e.g. resetting notifications)
       default: []
       selector:
         action: {}
+    actions:
+      name: Finishing Actions
+      description: Actions when appliance has finished (e.g. pushing a notification, TTS announcement, ...)
+      selector:
+        action: {}
     post_actions:
-      name: Post-Actions
-      description: Actions when automation is stopped or finished
+      name: Off Actions
+      description: Actions when appliance has turned off (e.g. resetting notifications)
       default: []
       selector:
         action: {}
@@ -102,8 +102,6 @@ action:
 - if:
   - '{{ trigger.id == ''stop'' }}'
   then:
-  - choose: []
-    default: !input post_actions
   - stop: Stopping '{{ this.attributes.friendly_name }}' because triggered by 'stop' with reason {{ trigger.event.data.reason }}.
 - parallel:
   - sequence:
@@ -112,6 +110,8 @@ action:
         entity_id: !input power_sensor
         below: !input off_threshold
         for: !input off_hysteresis
+    - choose: []
+      default: !input post_actions
     - event: stop_appliance_has_finished
       event_data:
         entity_id: '{{ this.entity_id }}'
