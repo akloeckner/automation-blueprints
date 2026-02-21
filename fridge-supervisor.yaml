@@ -1,0 +1,131 @@
+blueprint:
+  name: Supervise a fridge
+  description: |
+    React to a fridge kept open or warming up.
+    Be sure to select sufficiently high thresholds to prevent false alarms.
+    Monitor the sensors for some time to select these values.
+  source_url: https://gist.github.com/akloeckner/4cb290afedb47066514017211c357924
+  domain: automation
+  input:
+    opening_entity:
+      name: Opening sensor
+      description: The binary opening sensor for the fridge door
+      selector:
+        entity:
+          domain: binary_sensor
+    temperature_entity:
+      name: Temperature sensor
+      description: The temperature sensor in the fridge
+      selector:
+        entity:
+          domain: sensor
+          device_class: temperature
+    opening_threshold:
+      name: Opening threshold
+      description: The time in minutes for which the fridge door needs to stay open to trigger the actions
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          mode: slider
+    warm_threshold:
+      name: Warm threshold
+      description: The temperature above which to consider the fridge warming up
+      default: 12
+      selector:
+        number:
+          min: -20
+          max: 20
+          step: 1
+          mode: slider
+    cold_threshold:
+      name: Cold threshold
+      description: The temperature below which to consider the fridge back to normal condition
+      default: 10
+      selector:
+        number:
+          min: -20
+          max: 20
+          step: 1
+          mode: slider
+    open_actions:
+      name: Open actions
+      description: Actions when fridge door was left open (e.g. notification)
+      default: []
+      selector:
+        action: {}
+    warm_actions:
+      name: Warm actions
+      description: Actions when fridge is warming up (e.g. critical notification)
+      default: []
+      selector:
+        action: {}
+    reset_actions:
+      name: Reset actions
+      description: Actions when fridge returns to normal operation (e.g. clearing notification)
+      default: []
+      selector:
+        action: {}
+
+trigger_variables:
+  opening_threshold: !input opening_threshold
+
+mode: single
+
+triggers:
+  - trigger: state
+    entity_id: !input opening_entity
+    to: 'on'
+    for:
+      minutes: !input opening_threshold
+    id: open
+  - trigger: numeric_state
+    entity_id: !input temperature_entity
+    above: !input warm_threshold
+    id: warm
+  - trigger: numeric_state
+    entity_id: !input temperature_entity
+    below: !input cold_threshold
+    id: cold
+  - trigger: state
+    entity_id: !input opening_entity
+    from: 'on'
+    to: 'off'
+    id: close
+
+conditions:
+  - condition: or
+    conditions:
+    - alias: Unambiguous triggers
+      condition: trigger
+      id:
+      - open
+      - warm
+      - cold
+    - alias: Check opening threshold for closing door
+      condition: template
+      value_template: |
+        {{ (now() - trigger.from_state.last_changed).total_seconds() > opening_threshold * 60 }}
+
+actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id:
+        - open
+      sequence: !input open_actions
+    - conditions:
+      - condition: trigger
+        id:
+        - warm
+      sequence: !input warm_actions
+    - conditions:
+      - condition: state
+        entity_id: !input opening_entity
+        state: 'off'
+      - condition: numeric_state
+        entity_id: !input temperature_entity
+        below: !input cold_threshold
+      sequence: !input reset_actions
