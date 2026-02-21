@@ -4,7 +4,7 @@ blueprint:
     React to a fridge kept open or warming up.
     Be sure to select sufficiently high thresholds to prevent false alarms.
     Monitor the sensors for some time to select these values.
-  source_url: https://gist.github.com/akloeckner/4cb290afedb47066514017211c357924
+  source_url: https://gist.github.com/akloeckner/32bf13383b310eff37a2b74163049a52
   domain: automation
   input:
     opening_entity:
