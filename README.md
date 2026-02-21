@@ -23,3 +23,8 @@ Use a ventilation device to control temperature and humidity.
 ### [window-open-notify-homematic-ip.yaml](https://gist.github.com/akloeckner/8e10ccc4fd5325a2dff95abb6886c943)
 
 Reduce target temperature of HomeMatic climate devices, when windows are opened.
+
+### [fridge-supervisor.yaml](https://gist.github.com/akloeckner/32bf13383b310eff37a2b74163049a52)
+
+Do something when a fridge stays open or becomes warm
+
